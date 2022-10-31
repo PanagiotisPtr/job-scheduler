@@ -8,23 +8,23 @@ import (
 )
 
 type ServiceConfig struct {
-	Port int
+	Port int `mapstructure:"port"`
 }
 
 type GitHubRepositoryArgs struct {
-	Owner string
-	Name  string
-	Path  string
+	Owner string `mapstructure:"owner"`
+	Name  string `mapstructure:"name"`
+	Path  string `mapstructure:"path"`
 }
 
 type GitHubConfig struct {
-	AccessToken string
-	Locations   []GitHubRepositoryArgs
+	AccessToken string                 `mapstructure:"accessToken"`
+	Locations   []GitHubRepositoryArgs `mapstructure:"locations"`
 }
 
 type Config struct {
-	Service      ServiceConfig
-	GitHubCinfig GitHubConfig
+	Service      ServiceConfig `mapstructure:"service"`
+	GitHubCinfig GitHubConfig  `mapstructure:"githubConfig"`
 }
 
 func loadConfig(filename string) (*Config, error) {

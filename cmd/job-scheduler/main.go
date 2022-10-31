@@ -2,158 +2,179 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"strings"
+	"net/http"
 
 	"github.com/google/go-github/v48/github"
-	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
+	"github.com/gorilla/mux"
+	"github.com/panagiotisptr/job-scheduler/config"
+	"github.com/panagiotisptr/job-scheduler/parser"
+	githubRepo "github.com/panagiotisptr/job-scheduler/repository/github"
+	"github.com/panagiotisptr/job-scheduler/service"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
+	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
-func IsYaml(path string) bool {
-	return strings.Contains(path, ".yml") ||
-		strings.Contains(path, ".yaml")
+func ProvideGitHubClient(
+	cfg *config.Config,
+) (*github.Client, error) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: cfg.GitHubCinfig.AccessToken},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	client := github.NewClient(tc)
+
+	return client, nil
 }
 
-type RepositoryArgs struct {
-	Owner string
-	Name  string
-	Path  string
+func ProvideLogger() *zap.Logger {
+	logger, _ := zap.NewProduction()
+
+	return logger
 }
 
-func getYmlFilePaths(
-	ctx context.Context,
-	client *github.Client,
-	args RepositoryArgs,
-) ([]RepositoryArgs, error) {
-	rv := []RepositoryArgs{}
-	paths := []string{args.Path}
+func errorResponse(w http.ResponseWriter, err error, logger *zap.Logger) {
+	w.WriteHeader(http.StatusInternalServerError)
+	b, err := json.Marshal(struct {
+		Error string `json:"error"`
+	}{
+		Error: err.Error(),
+	})
 
-	for len(paths) > 0 {
-		p := paths[len(paths)-1]
-		paths = paths[:len(paths)-1]
+	if err != nil {
+		logger.Sugar().Error(
+			"failed to marshal error: ",
+			err,
+		)
+		return
+	}
 
-		_, content, _, err := client.Repositories.GetContents(
-			ctx,
-			args.Owner,
-			args.Name,
-			p,
-			nil,
+	_, err = w.Write(b)
+	if err != nil {
+		logger.Sugar().Error(
+			"failed to write to response: ",
+			err,
+		)
+	}
+}
+
+func Bootstrap(
+	cfg *config.Config,
+	lc fx.Lifecycle,
+	logger *zap.Logger,
+	service *service.CronJobService,
+) {
+	r := mux.NewRouter()
+	r.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("hello"))
+		if err != nil {
+			logger.Sugar().Error(
+				"failed to write to response: ",
+				err,
+			)
+		}
+	})
+	r.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := json.Marshal(cfg)
+		_, err := w.Write(b)
+		if err != nil {
+			logger.Sugar().Error(
+				"failed to write to response: ",
+				err,
+			)
+		}
+	})
+	r.HandleFunc("/jobs", func(w http.ResponseWriter, r *http.Request) {
+		cronJobNames, err := service.ListAvailableJobs(
+			context.Background(),
 		)
 		if err != nil {
-			// will log this later
-			continue
+			errorResponse(w, err, logger)
+			return
 		}
 
-		for _, c := range content {
-			switch c.GetType() {
-			case "dir":
-				if c.Path != nil {
-					paths = append(paths, c.GetPath())
-				}
-			case "file":
-				fmt.Println(c.GetContent())
-				if IsYaml(c.GetPath()) {
-					rv = append(rv, RepositoryArgs{
-						Owner: args.Owner,
-						Name:  args.Name,
-						Path:  c.GetPath(),
-					})
-				}
-			}
-		}
-	}
-
-	return rv, nil
-}
-
-func GetFile(
-	ctx context.Context,
-	client *github.Client,
-	args RepositoryArgs,
-) error {
-	r, _, err := client.Repositories.DownloadContents(
-		ctx,
-		args.Owner,
-		args.Name,
-		args.Path,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	ParseCronJobConfigs(r)
-
-	return nil
-}
-
-func ParseCronJobConfigs(
-	r io.ReadCloser,
-) []*batchv1.CronJob {
-	cronJobs := []*batchv1.CronJob{}
-	var err error
-	decoder := yamlutil.NewYAMLOrJSONDecoder(r, 100)
-	for {
-		var rawObj runtime.RawExtension
-		if err = decoder.Decode(&rawObj); err != nil {
-			break
-		}
-
-		obj, _, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
-		unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+		b, err := json.Marshal(struct {
+			JobNames []string `json:"jobNames"`
+		}{
+			JobNames: cronJobNames,
+		})
 		if err != nil {
-			log.Fatal(err)
+			errorResponse(w, err, logger)
+			return
 		}
 
-		unstructuredObj := &unstructured.Unstructured{Object: unstructuredMap}
-
-		if unstructuredObj.GetKind() == "CronJob" {
-			var cronJob batchv1.CronJob
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(
-				unstructuredMap,
-				&cronJob,
+		_, err = w.Write(b)
+		if err != nil {
+			logger.Sugar().Error(
+				"failed to write to response: ",
+				err,
 			)
-			if err != nil {
-				continue
-			}
-			fmt.Println(cronJob.Name)
-			cronJobs = append(cronJobs, &cronJob)
 		}
-	}
-	if err != io.EOF {
-		log.Fatal("eof ", err)
-	}
+	})
+	r.HandleFunc("/jobs/{jobName}", func(w http.ResponseWriter, r *http.Request) {
+		jobName, ok := mux.Vars(r)["jobName"]
+		if !ok {
+			errorResponse(
+				w,
+				fmt.Errorf("could not find job"),
+				logger,
+			)
+		}
+		cronJob, err := service.GetJob(
+			context.Background(),
+			jobName,
+		)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
 
-	return cronJobs
+		b, err := json.Marshal(cronJob)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		_, err = w.Write(b)
+		if err != nil {
+			logger.Sugar().Error(
+				"failed to write to response: ",
+				err,
+			)
+		}
+	})
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go http.ListenAndServe(fmt.Sprintf(":%d", cfg.Service.Port), r)
+
+			return nil
+		},
+	})
 }
 
 func main() {
-	ctx := context.Background()
-	client := github.NewClient(nil)
-
-	paths, err := getYmlFilePaths(
-		ctx,
-		client,
-		RepositoryArgs{
-			Owner: "panagiotisptr",
-			Name:  "hermes-messenger",
-			Path:  "/deployment",
-		},
+	app := fx.New(
+		fx.Provide(
+			ProvideLogger,
+			ProvideGitHubClient,
+			config.ProvideConfig,
+			parser.ProvideCronJobParser,
+			githubRepo.ProvideGitHubCronJobRepository,
+			service.ProvideCronJobService,
+		),
+		fx.Invoke(Bootstrap),
+		fx.WithLogger(
+			func(logger *zap.Logger) fxevent.Logger {
+				return &fxevent.ZapLogger{Logger: logger}
+			},
+		),
 	)
-	if err != nil {
-		panic(err)
-	}
 
-	fmt.Println(paths)
-
-	for _, f := range paths {
-		err = GetFile(ctx, client, f)
-	}
+	app.Run()
 }

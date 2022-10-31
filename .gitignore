@@ -1,3 +1,7 @@
 config.dev.yaml
 config.prod.yaml
 config.test.yaml
+
+config.dev.yml
+config.prod.yml
+config.test.yml

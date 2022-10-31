@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"context"
 	"fmt"
 	"io"
 
@@ -18,7 +17,6 @@ type CronJobParser struct {
 }
 
 func ProvideCronJobParser(
-	ctx context.Context,
 	logger *zap.Logger,
 ) (*CronJobParser, error) {
 	return &CronJobParser{

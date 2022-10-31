@@ -34,9 +34,8 @@ type GitHubCronJobRepository struct {
 }
 
 func ProvideGitHubCronJobRepository(
-	ctx context.Context,
 	lc fx.Lifecycle,
-	cfg config.Config,
+	cfg *config.Config,
 	logger *zap.Logger,
 	client *github.Client,
 	p *parser.CronJobParser,
@@ -52,10 +51,16 @@ func ProvideGitHubCronJobRepository(
 	stop := make(chan struct{})
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			repo.logger.Sugar().Info("syncing cronjobs with github")
+			timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutThreshold))
+			defer cancel()
+			err := repo.sync(timeoutCtx, cfg.GitHubCinfig.Locations)
+			if err != nil {
+				repo.logger.Sugar().Error("failed to sync cronjobs with GitHub: ", err)
+			}
 			go func() {
 				select {
 				case <-ticker.C:
+					repo.logger.Sugar().Info("syncing cronjobs with github")
 					timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutThreshold))
 					defer cancel()
 					err := repo.sync(timeoutCtx, cfg.GitHubCinfig.Locations)
@@ -123,33 +128,38 @@ func (r *GitHubCronJobRepository) sync(
 							paths = append(paths, c.GetPath())
 						}
 					case "file":
-						fmt.Println(c.GetContent())
-						if isYaml(c.GetPath()) {
-							reader, err := r.getFileReader(
-								ctx,
-								location,
+						if !isYaml(c.GetPath()) {
+							continue
+						}
+						reader, err := r.getFileReader(
+							ctx,
+							config.GitHubRepositoryArgs{
+								Owner: location.Owner,
+								Name:  location.Name,
+								Path:  c.GetPath(),
+							},
+						)
+						if err != nil {
+							r.logger.With(
+								zap.String("owner", location.Owner),
+								zap.String("name", location.Name),
+								zap.String("path", p),
+							).Sugar().Error(
+								"failed to get reader for file: ",
+								err,
 							)
-							if err != nil {
-								r.logger.With(
-									zap.String("owner", location.Owner),
-									zap.String("name", location.Name),
-									zap.String("path", p),
-								).Sugar().Error(
-									"failed to get reader for file: ",
-									err,
-								)
-							}
-							defer reader.Close()
-							cronJobs := r.cronJobParser.ParseCronJobConfigs(
-								reader,
-							)
-							for _, cj := range cronJobs {
-								// one yaml file could have multiple cron jobs
-								r.cronJobs[cj.Name] = config.GitHubRepositoryArgs{
-									Owner: location.Owner,
-									Name:  location.Name,
-									Path:  c.GetPath(),
-								}
+							continue
+						}
+						defer reader.Close()
+						cronJobs := r.cronJobParser.ParseCronJobConfigs(
+							reader,
+						)
+						for _, cj := range cronJobs {
+							// one yaml file could have multiple cron jobs
+							r.cronJobs[cj.Name] = config.GitHubRepositoryArgs{
+								Owner: location.Owner,
+								Name:  location.Name,
+								Path:  c.GetPath(),
 							}
 						}
 					}

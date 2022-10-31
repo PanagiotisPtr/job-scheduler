@@ -1,0 +1,9 @@
+service:
+  port: 8081
+
+githubConfig:
+  accessToken: "YOUR_ACCESS_TOKEN"
+  locations:
+    - owner: "repo_owner"
+      name: "repo_name"
+      path: "dir_path"
