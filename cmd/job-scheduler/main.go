@@ -11,12 +11,25 @@ import (
 	"github.com/panagiotisptr/job-scheduler/config"
 	"github.com/panagiotisptr/job-scheduler/parser"
 	githubRepo "github.com/panagiotisptr/job-scheduler/repository/github"
+	kubeRepo "github.com/panagiotisptr/job-scheduler/repository/kubernetes"
 	"github.com/panagiotisptr/job-scheduler/service"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
+
+func ProvideKuberentesClientset() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return kubernetes.NewForConfig(config)
+}
 
 func ProvideGitHubClient(
 	cfg *config.Config,
@@ -67,18 +80,13 @@ func Bootstrap(
 	cfg *config.Config,
 	lc fx.Lifecycle,
 	logger *zap.Logger,
-	service *service.CronJobService,
+	cronJobService *service.CronJobService,
+	kubernetesService *service.KubernetesService,
 ) {
 	r := mux.NewRouter()
-	r.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("hello"))
-		if err != nil {
-			logger.Sugar().Error(
-				"failed to write to response: ",
-				err,
-			)
-		}
-	})
+	// ideally there'd be a controller and an
+	// application service here but I'll leave it like this
+	// for now
 	r.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := json.Marshal(cfg)
 		_, err := w.Write(b)
@@ -90,7 +98,7 @@ func Bootstrap(
 		}
 	})
 	r.HandleFunc("/jobs", func(w http.ResponseWriter, r *http.Request) {
-		cronJobNames, err := service.ListAvailableJobs(
+		cronJobNames, err := cronJobService.ListAvailableJobs(
 			context.Background(),
 		)
 		if err != nil {
@@ -125,7 +133,7 @@ func Bootstrap(
 				logger,
 			)
 		}
-		cronJob, err := service.GetJob(
+		cronJob, err := cronJobService.GetJob(
 			context.Background(),
 			jobName,
 		)
@@ -148,6 +156,87 @@ func Bootstrap(
 			)
 		}
 	})
+	r.HandleFunc("/runningJobs", func(w http.ResponseWriter, r *http.Request) {
+		cronJobs, err := kubernetesService.ListRunningJobs(
+			context.Background(),
+		)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		b, err := json.Marshal(cronJobs)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		_, err = w.Write(b)
+		if err != nil {
+			logger.Sugar().Error(
+				"failed to write to response: ",
+				err,
+			)
+		}
+	})
+	r.HandleFunc("/jobs/{jobName}/start", func(w http.ResponseWriter, r *http.Request) {
+		jobName, ok := mux.Vars(r)["jobName"]
+		if !ok {
+			errorResponse(
+				w,
+				fmt.Errorf("could not find job"),
+				logger,
+			)
+		}
+		cronJob, err := cronJobService.GetJob(
+			context.Background(),
+			jobName,
+		)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		err = kubernetesService.StartJob(
+			context.Background(),
+			cronJob,
+		)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	})
+	r.HandleFunc("/jobs/{jobName}/stop", func(w http.ResponseWriter, r *http.Request) {
+		jobName, ok := mux.Vars(r)["jobName"]
+		if !ok {
+			errorResponse(
+				w,
+				fmt.Errorf("could not find job"),
+				logger,
+			)
+		}
+		cronJob, err := cronJobService.GetJob(
+			context.Background(),
+			jobName,
+		)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		err = kubernetesService.StopJob(
+			context.Background(),
+			cronJob,
+		)
+		if err != nil {
+			errorResponse(w, err, logger)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	})
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -166,7 +255,9 @@ func main() {
 			config.ProvideConfig,
 			parser.ProvideCronJobParser,
 			githubRepo.ProvideGitHubCronJobRepository,
+			kubeRepo.ProvideKubernetesRepository,
 			service.ProvideCronJobService,
+			service.ProvideKubernetesService,
 		),
 		fx.Invoke(Bootstrap),
 		fx.WithLogger(
