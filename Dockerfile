@@ -7,13 +7,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . ./
-RUN go build
-
+RUN go build -o job-scheduler cmd/job-scheduler/main.go
 RUN chmod +x generate_config.sh
-RUN ./generate_config.sh > config.prod.yml
 
 FROM alpine
 WORKDIR /
 COPY --from=builder /build/job-scheduler .
-COPY --from=builder /build/config.prod.yml .
-CMD ["./job-scheduler -config config.prod.yml"]
+COPY --from=builder /build/generate_config.sh .
+CMD ["./generate_config.sh > config.prod.yml && ./job-scheduler -config config.prod.yml"]
