@@ -49,7 +49,7 @@ func loadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
-func ProvideConfigFromRemote(
+func ProvideRemoteConfig(
 	logger *zap.Logger,
 ) (*Config, error) {
 	var config Config
