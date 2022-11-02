@@ -36,7 +36,7 @@ func ProvideGitHubClient(
 ) (*github.Client, error) {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: cfg.GitHubCinfig.AccessToken},
+		&oauth2.Token{AccessToken: cfg.GitHubConfig.AccessToken},
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
@@ -253,7 +253,7 @@ func main() {
 			ProvideLogger,
 			ProvideGitHubClient,
 			ProvideKuberentesClientset,
-			config.ProvideConfig,
+			config.ProvideConfigFromRemote,
 			parser.ProvideCronJobParser,
 			githubRepo.ProvideGitHubCronJobRepository,
 			kubeRepo.ProvideKubernetesRepository,

@@ -18,31 +18,11 @@ spec:
         ports:
           - containerPort: 80
         env:
-          - name: LISTEN_PORT
+          - name: CONFIG_URL
             valueFrom:
               configMapKeyRef:
                 name: job-scheduler-config
-                key: listen_port
-          - name: ACCESS_TOKEN
-            valueFrom:
-              configMapKeyRef:
-                name: job-scheduler-config
-                key: access_token
-          - name: REPO_OWNER
-            valueFrom:
-              configMapKeyRef:
-                name: job-scheduler-config
-                key: repo_owner
-          - name: REPO_NAME
-            valueFrom:
-              configMapKeyRef:
-                name: job-scheduler-config
-                key: repo_name
-          - name: REPO_PATH
-            valueFrom:
-              configMapKeyRef:
-                name: job-scheduler-config
-                key: repo_path
+                key: config_url
 ---
 apiVersion: v1
 kind: Service

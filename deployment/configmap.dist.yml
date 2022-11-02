@@ -7,8 +7,4 @@ metadata:
   resourceVersion: "1"
   uid: b16ba226-3c6a-4a4a-8e68-6990350d2614
 data:
-  listen_port: "80"
-  access_token: ""
-  repo_owner: ""
-  repo_name: ""
-  repo_path: ""
+  config_url: ""

@@ -53,7 +53,7 @@ func ProvideGitHubCronJobRepository(
 		OnStart: func(ctx context.Context) error {
 			timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutThreshold))
 			defer cancel()
-			err := repo.sync(timeoutCtx, cfg.GitHubCinfig.Locations)
+			err := repo.sync(timeoutCtx, cfg.GitHubConfig.Locations)
 			if err != nil {
 				repo.logger.Sugar().Error("failed to sync cronjobs with GitHub: ", err)
 			}
@@ -63,7 +63,7 @@ func ProvideGitHubCronJobRepository(
 					repo.logger.Sugar().Info("syncing cronjobs with github")
 					timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutThreshold))
 					defer cancel()
-					err := repo.sync(timeoutCtx, cfg.GitHubCinfig.Locations)
+					err := repo.sync(timeoutCtx, cfg.GitHubConfig.Locations)
 					if err != nil {
 						repo.logger.Sugar().Error("failed to sync cronjobs with GitHub: ", err)
 					}

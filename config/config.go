@@ -3,6 +3,9 @@ package config
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 
 	"github.com/spf13/viper"
@@ -26,7 +29,7 @@ type GitHubConfig struct {
 
 type Config struct {
 	Service      ServiceConfig `mapstructure:"service"`
-	GitHubCinfig GitHubConfig  `mapstructure:"githubConfig"`
+	GitHubConfig GitHubConfig  `mapstructure:"githubConfig"`
 }
 
 func loadConfig(filename string) (*Config, error) {
@@ -44,6 +47,36 @@ func loadConfig(filename string) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+func ProvideConfigFromRemote(
+	logger *zap.Logger,
+) (*Config, error) {
+	var config Config
+	resp, err := http.Get(os.Getenv("CONFIG_URL"))
+	if err != nil {
+		return &config, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return &config, fmt.Errorf(
+			"failed to fetch remote config. Got status code: %d",
+			resp.StatusCode,
+		)
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &config, err
+	}
+
+	err = os.WriteFile("config.prod.yml", b, 0644)
+	if err != nil {
+		return &config, err
+	}
+
+	return loadConfig("config.prod.yml")
 }
 
 func ProvideConfig(
