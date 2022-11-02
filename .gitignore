@@ -5,3 +5,11 @@ config.test.yaml
 config.dev.yml
 config.prod.yml
 config.test.yml
+
+deployment/configmap.dev.yaml
+deployment/configmap.prod.yaml
+deployment/configmap.test.yaml
+
+deployment/configmap.dev.yml
+deployment/configmap.prod.yml
+deployment/configmap.test.yml
