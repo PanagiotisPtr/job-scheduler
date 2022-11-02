@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"io"
 
 	"go.uber.org/zap"
@@ -59,7 +58,6 @@ func (p *CronJobParser) ParseCronJobConfigs(
 				)
 				continue
 			}
-			fmt.Println(cronJob.Name)
 			cronJobs = append(cronJobs, cronJob)
 		}
 	}

@@ -92,6 +92,7 @@ func (c *KubernetesController) startJob(
 		)
 		return
 	}
+	c.logger.Info("HELLO1")
 
 	writeObject(
 		w,

@@ -21,9 +21,10 @@ spec:
       serviceAccountName: job-scheduler-service-account 
       containers:
       - name: job-scheduler-deployment
-        image: panagiotisptr/job-scheduler
+        image: panagiotisptr/job-scheduler:latest
         ports:
           - containerPort: 80
+        imagePullPolicy: Always
         env:
           - name: CONFIG_URL
             valueFrom:

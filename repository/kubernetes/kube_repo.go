@@ -3,11 +3,11 @@ package kubernetes
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/panagiotisptr/job-scheduler/repository"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applyv1 "k8s.io/client-go/applyconfigurations/batch/v1"
 	"k8s.io/client-go/kubernetes"
@@ -63,17 +63,11 @@ func (r *KubernetesRepository) StartJob(
 	ctx context.Context,
 	cj batchv1.CronJob,
 ) error {
-	config, err := cronJobToConfig(cj)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to convert cronjob to cronjob configuration: %v",
-			err,
-		)
-	}
-	_, err = r.client.BatchV1().CronJobs("").Apply(
+	r.logger.Info("HELLO3")
+	_, err := r.client.BatchV1().CronJobs(apiv1.NamespaceDefault).Create(
 		ctx,
-		&config,
-		metav1.ApplyOptions{},
+		&cj,
+		metav1.CreateOptions{},
 	)
 
 	return err
@@ -85,7 +79,7 @@ func (r *KubernetesRepository) StopJob(
 ) error {
 	t := true
 	cj.Spec.Suspend = &t
-	_, err := r.client.BatchV1().CronJobs("").Update(
+	_, err := r.client.BatchV1().CronJobs("default").Update(
 		ctx,
 		&cj,
 		metav1.UpdateOptions{},
