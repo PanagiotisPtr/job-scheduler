@@ -1,3 +1,9 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: job-scheduler-service-account 
+automountServiceAccountToken: true
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,6 +18,7 @@ spec:
       labels:
         app: job-scheduler-server
     spec:
+      serviceAccountName: job-scheduler-service-account 
       containers:
       - name: job-scheduler-deployment
         image: panagiotisptr/job-scheduler
