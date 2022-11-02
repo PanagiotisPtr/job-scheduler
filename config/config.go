@@ -1,10 +1,12 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type ServiceConfig struct {
@@ -44,7 +46,9 @@ func loadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
-func ProvideConfig() (*Config, error) {
+func ProvideConfig(
+	logger *zap.Logger,
+) (*Config, error) {
 	configFilename := *flag.String("config", "config.dev.yml", "configuration file")
 	flag.Parse()
 
@@ -52,7 +56,12 @@ func ProvideConfig() (*Config, error) {
 		configFilename = os.Getenv("CONFIG")
 	}
 
-	return loadConfig(configFilename)
+	cfg, err := loadConfig(configFilename)
+
+	b, _ := json.Marshal(cfg)
+	logger.Sugar().Info("Running with configuration: " + string(b))
+
+	return cfg, err
 }
 
 func ProvideTestConfig() (*Config, error) {

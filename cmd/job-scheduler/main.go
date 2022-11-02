@@ -252,6 +252,7 @@ func main() {
 		fx.Provide(
 			ProvideLogger,
 			ProvideGitHubClient,
+			ProvideKuberentesClientset,
 			config.ProvideConfig,
 			parser.ProvideCronJobParser,
 			githubRepo.ProvideGitHubCronJobRepository,
