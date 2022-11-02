@@ -33,7 +33,6 @@ func (s *KubernetesService) StartJob(
 	ctx context.Context,
 	cj batchv1.CronJob,
 ) error {
-	s.logger.Info("HELLO2")
 	return s.repo.StartJob(ctx, cj)
 }
 

@@ -44,7 +44,7 @@ func (a *App) StopJob(
 		return err
 	}
 
-	return a.kubeService.StartJob(
+	return a.kubeService.StopJob(
 		ctx,
 		cronJob,
 	)

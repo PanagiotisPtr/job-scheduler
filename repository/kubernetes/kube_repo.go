@@ -7,7 +7,6 @@ import (
 	"github.com/panagiotisptr/job-scheduler/repository"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
-	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applyv1 "k8s.io/client-go/applyconfigurations/batch/v1"
 	"k8s.io/client-go/kubernetes"
@@ -63,8 +62,7 @@ func (r *KubernetesRepository) StartJob(
 	ctx context.Context,
 	cj batchv1.CronJob,
 ) error {
-	r.logger.Info("HELLO3")
-	_, err := r.client.BatchV1().CronJobs(apiv1.NamespaceDefault).Create(
+	_, err := r.client.BatchV1().CronJobs("default").Create(
 		ctx,
 		&cj,
 		metav1.CreateOptions{},
@@ -77,11 +75,20 @@ func (r *KubernetesRepository) StopJob(
 	ctx context.Context,
 	cj batchv1.CronJob,
 ) error {
-	t := true
-	cj.Spec.Suspend = &t
-	_, err := r.client.BatchV1().CronJobs("default").Update(
+	c, err := r.client.BatchV1().CronJobs("default").Get(
 		ctx,
-		&cj,
+		cj.Name,
+		metav1.GetOptions{},
+	)
+	if err != nil {
+		return err
+	}
+	t := true
+	c.Spec.Suspend = &t
+
+	_, err = r.client.BatchV1().CronJobs("default").Update(
+		ctx,
+		c,
 		metav1.UpdateOptions{},
 	)
 
