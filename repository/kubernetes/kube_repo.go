@@ -34,7 +34,6 @@ func (r *KubernetesRepository) getCronJob(
 	cj *batchv1.CronJob,
 	createIfNotFound bool,
 ) (*batchv1.CronJob, error) {
-	r.logger.Info("getting cron job")
 	cronJob, err := r.client.BatchV1().CronJobs(r.getNamespace()).Get(
 		ctx,
 		cj.Name,
@@ -51,7 +50,6 @@ func (r *KubernetesRepository) getCronJob(
 		return cronJob, err
 	}
 
-	r.logger.Info("creating cron job")
 	return r.client.BatchV1().CronJobs(r.getNamespace()).Create(
 		ctx,
 		cj,
@@ -105,7 +103,6 @@ func (r *KubernetesRepository) StartCronJob(
 	// this cronjob was previously stopped and the spec says
 	// it should be running. Delete and recreate it
 	if isSuspended(cronJob) && !isSuspended(cj) {
-		r.logger.Info("deleting cronjob")
 		err = r.client.BatchV1().CronJobs(r.getNamespace()).Delete(
 			ctx,
 			cronJob.Name,
@@ -123,7 +120,6 @@ func (r *KubernetesRepository) StartCronJob(
 	t := false
 	cronJob.Spec.Suspend = &t
 
-	r.logger.Info("updating cronjob")
 	_, err = r.client.BatchV1().CronJobs(r.getNamespace()).Update(
 		ctx,
 		cronJob,
