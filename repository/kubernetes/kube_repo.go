@@ -2,13 +2,11 @@ package kubernetes
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/panagiotisptr/job-scheduler/repository"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	applyv1 "k8s.io/client-go/applyconfigurations/batch/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -41,21 +39,6 @@ func (r *KubernetesRepository) GetRunningJobs(
 	}
 
 	return cronJobs.Items, nil
-}
-
-// This is sketchy
-func cronJobToConfig(
-	cj batchv1.CronJob,
-) (applyv1.CronJobApplyConfiguration, error) {
-	config := applyv1.CronJobApplyConfiguration{}
-
-	b, err := json.Marshal(cj)
-	if err != nil {
-		return config, err
-	}
-	err = json.Unmarshal(b, &config)
-
-	return config, err
 }
 
 func (r *KubernetesRepository) StartJob(
