@@ -6,8 +6,15 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 )
 
+// KubernetesRepository a repository to interface with the
+// kubernetes client
 type KubernetesRepository interface {
-	StartJob(ctx context.Context, cj batchv1.CronJob) error
-	StopJob(ctx context.Context, cj batchv1.CronJob) error
-	GetRunningJobs(ctx context.Context) ([]batchv1.CronJob, error)
+	// StartJob Start a cron job
+	StartCronJob(ctx context.Context, cj *batchv1.CronJob) error
+
+	// StopJob Stop a cron job
+	StopCronJob(ctx context.Context, cj *batchv1.CronJob) error
+
+	// GetRunningJobs get list of names of running jobs
+	GetRunningCronJobs(ctx context.Context) ([]string, error)
 }

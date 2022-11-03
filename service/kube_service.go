@@ -23,22 +23,22 @@ func ProvideKubernetesService(
 	}, nil
 }
 
-func (s *KubernetesService) ListRunningJobs(
+func (s *KubernetesService) ListRunningCronJobs(
 	ctx context.Context,
-) ([]batchv1.CronJob, error) {
-	return s.repo.GetRunningJobs(ctx)
+) ([]string, error) {
+	return s.repo.GetRunningCronJobs(ctx)
 }
 
-func (s *KubernetesService) StartJob(
+func (s *KubernetesService) StartCronJob(
 	ctx context.Context,
-	cj batchv1.CronJob,
+	cj *batchv1.CronJob,
 ) error {
-	return s.repo.StartJob(ctx, cj)
+	return s.repo.StartCronJob(ctx, cj)
 }
 
-func (s *KubernetesService) StopJob(
+func (s *KubernetesService) StopCronJob(
 	ctx context.Context,
-	cj batchv1.CronJob,
+	cj *batchv1.CronJob,
 ) error {
-	return s.repo.StopJob(ctx, cj)
+	return s.repo.StopCronJob(ctx, cj)
 }

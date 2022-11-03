@@ -23,15 +23,15 @@ func ProvideCronJobService(
 	}, nil
 }
 
-func (s *CronJobService) ListAvailableJobs(
+func (s *CronJobService) ListAvailableCronJobs(
 	ctx context.Context,
 ) ([]string, error) {
 	return s.repo.GetCronJobNames(ctx)
 }
 
-func (s *CronJobService) GetJob(
+func (s *CronJobService) GetCronJob(
 	ctx context.Context,
 	name string,
-) (batchv1.CronJob, error) {
+) (*batchv1.CronJob, error) {
 	return s.repo.GetCronJob(ctx, name)
 }

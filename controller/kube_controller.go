@@ -26,9 +26,9 @@ func ProvideKubernetesController(
 		app:    app,
 	}
 
-	r.HandleFunc("/cluster/jobs", c.listRunningJobs)
-	r.HandleFunc("/cluster/jobs/{jobName}/start", c.startJob)
-	r.HandleFunc("/cluster/jobs/{jobName}/stop", c.stopJob)
+	r.HandleFunc("/cluster/jobs", c.listRunningJobs).Methods(http.MethodGet)
+	r.HandleFunc("/cluster/jobs/{jobName}/start", c.startJob).Methods(http.MethodPatch)
+	r.HandleFunc("/cluster/jobs/{jobName}/stop", c.stopJob).Methods(http.MethodPatch)
 
 	return c, nil
 }
@@ -55,7 +55,11 @@ func (c *KubernetesController) listRunningJobs(
 
 	writeObject(
 		w,
-		res,
+		struct {
+			JobNames []string `json:"jobNames"`
+		}{
+			JobNames: res,
+		},
 		http.StatusOK,
 		c.logger,
 	)

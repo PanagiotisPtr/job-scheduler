@@ -210,11 +210,10 @@ func (r *GitHubCronJobRepository) GetCronJobNames(
 func (r *GitHubCronJobRepository) GetCronJob(
 	ctx context.Context,
 	name string,
-) (batchv1.CronJob, error) {
-	var cronJob batchv1.CronJob
+) (*batchv1.CronJob, error) {
 	location, ok := r.cronJobs[name]
 	if !ok {
-		return cronJob, fmt.Errorf("could not find cronjob with name: %s", name)
+		return nil, fmt.Errorf("could not find cronjob with name: %s", name)
 	}
 
 	reader, err := r.getFileReader(
@@ -230,7 +229,7 @@ func (r *GitHubCronJobRepository) GetCronJob(
 			"failed to get reader for file: ",
 			err,
 		)
-		return cronJob, err
+		return nil, err
 	}
 
 	cronJobs := r.cronJobParser.ParseCronJobConfigs(
@@ -239,12 +238,11 @@ func (r *GitHubCronJobRepository) GetCronJob(
 
 	for _, cj := range cronJobs {
 		if cj.Name == name {
-			return cj, nil
+			return &cj, nil
 		}
 	}
 
-	r.logger.Info("no")
-	return cronJob, fmt.Errorf(
+	return nil, fmt.Errorf(
 		"failed to find cronjob with name: %s",
 		name,
 	)

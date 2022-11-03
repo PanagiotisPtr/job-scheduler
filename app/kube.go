@@ -2,14 +2,12 @@ package app
 
 import (
 	"context"
-
-	batchv1 "k8s.io/api/batch/v1"
 )
 
 func (a *App) ListRunningJobs(
 	ctx context.Context,
-) ([]batchv1.CronJob, error) {
-	return a.kubeService.ListRunningJobs(
+) ([]string, error) {
+	return a.kubeService.ListRunningCronJobs(
 		ctx,
 	)
 }
@@ -18,7 +16,7 @@ func (a *App) StartJob(
 	ctx context.Context,
 	jobName string,
 ) error {
-	cronJob, err := a.cronJobService.GetJob(
+	cronJob, err := a.cronJobService.GetCronJob(
 		ctx,
 		jobName,
 	)
@@ -26,7 +24,7 @@ func (a *App) StartJob(
 		return err
 	}
 
-	return a.kubeService.StartJob(
+	return a.kubeService.StartCronJob(
 		ctx,
 		cronJob,
 	)
@@ -36,7 +34,7 @@ func (a *App) StopJob(
 	ctx context.Context,
 	jobName string,
 ) error {
-	cronJob, err := a.cronJobService.GetJob(
+	cronJob, err := a.cronJobService.GetCronJob(
 		ctx,
 		jobName,
 	)
@@ -44,7 +42,7 @@ func (a *App) StopJob(
 		return err
 	}
 
-	return a.kubeService.StopJob(
+	return a.kubeService.StopCronJob(
 		ctx,
 		cronJob,
 	)

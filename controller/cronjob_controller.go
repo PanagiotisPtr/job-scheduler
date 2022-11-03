@@ -26,8 +26,8 @@ func ProvideCronJobController(
 		app:    app,
 	}
 
-	r.HandleFunc("/static/jobs", c.listJobs)
-	r.HandleFunc("/static/jobs/{jobName}", c.getJob)
+	r.HandleFunc("/static/jobs", c.listJobs).Methods(http.MethodGet)
+	r.HandleFunc("/static/jobs/{jobName}", c.getJob).Methods(http.MethodGet)
 
 	return c, nil
 }
