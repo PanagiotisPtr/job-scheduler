@@ -115,10 +115,10 @@ func (r *KubernetesRepository) StartCronJob(
 			return err
 		}
 
-		cronJob, err = r.getCronJob(ctx, cj, true)
-		if err != nil {
-			return err
-		}
+		// This is safe - it won't get stuck in a loop
+		// we just deleted the object so next time isSuspended
+		// will match cj
+		return r.StartCronJob(ctx, cj)
 	}
 	t := false
 	cronJob.Spec.Suspend = &t

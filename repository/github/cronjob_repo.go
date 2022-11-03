@@ -61,7 +61,8 @@ func ProvideGitHubCronJobRepository(
 				select {
 				case <-ticker.C:
 					repo.logger.Sugar().Info("syncing cronjobs with github")
-					tctx, cl := context.WithTimeout(ctx, time.Duration(timeoutThreshold))
+					// has to be different context here
+					tctx, cl := context.WithTimeout(context.Background(), time.Duration(timeoutThreshold))
 					defer cl()
 					err := repo.sync(tctx, cfg.GitHubConfig.Locations)
 					if err != nil {
