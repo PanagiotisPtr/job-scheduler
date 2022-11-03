@@ -5,7 +5,7 @@ metadata:
 rules:
 - apiGroups: ["batch"]
   resources: ["cronjobs"]
-  verbs: ["create", "list", "get", "patch", "update"]
+  verbs: ["create", "list", "get", "patch", "update", "delete"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

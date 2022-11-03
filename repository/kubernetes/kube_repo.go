@@ -91,16 +91,36 @@ func (r *KubernetesRepository) StartCronJob(
 	ctx context.Context,
 	cj *batchv1.CronJob,
 ) error {
-	c, err := r.getCronJob(ctx, cj, true)
+	cronJob, err := r.getCronJob(ctx, cj, true)
 	if err != nil {
 		return err
 	}
-	t := false
-	c.Spec.Suspend = &t
+
+	isSuspended := func(c *batchv1.CronJob) bool {
+		return c.Spec.Suspend != nil && *c.Spec.Suspend
+	}
+
+	// this cronjob was previously stopped and the spec says
+	// it should be running. Delete and recreate it
+	if isSuspended(cronJob) && !isSuspended(cj) {
+		err = r.client.BatchV1().CronJobs(r.getNamespace()).Delete(
+			ctx,
+			cronJob.Name,
+			metav1.DeleteOptions{},
+		)
+		if err != nil {
+			return err
+		}
+
+		cronJob, err = r.getCronJob(ctx, cj, true)
+		if err != nil {
+			return err
+		}
+	}
 
 	_, err = r.client.BatchV1().CronJobs(r.getNamespace()).Update(
 		ctx,
-		c,
+		cronJob,
 		metav1.UpdateOptions{},
 	)
 
