@@ -34,22 +34,24 @@ func (r *KubernetesRepository) getCronJob(
 	cj *batchv1.CronJob,
 	createIfNotFound bool,
 ) (*batchv1.CronJob, error) {
-	cj, err := r.client.BatchV1().CronJobs(r.getNamespace()).Get(
+	r.logger.Info("getting cron job")
+	cronJob, err := r.client.BatchV1().CronJobs(r.getNamespace()).Get(
 		ctx,
 		cj.Name,
 		metav1.GetOptions{},
 	)
 	if err == nil {
-		return cj, nil
+		return cronJob, nil
 	}
 
 	// Basically if it is not a not found error we return the error
 	// If it is a not found error we return it only if we don't want
 	// to create the cron job
 	if !errors.IsNotFound(err) || !createIfNotFound {
-		return cj, err
+		return cronJob, err
 	}
 
+	r.logger.Info("creating cron job")
 	return r.client.BatchV1().CronJobs(r.getNamespace()).Create(
 		ctx,
 		cj,
@@ -103,6 +105,7 @@ func (r *KubernetesRepository) StartCronJob(
 	// this cronjob was previously stopped and the spec says
 	// it should be running. Delete and recreate it
 	if isSuspended(cronJob) && !isSuspended(cj) {
+		r.logger.Info("deleting cronjob")
 		err = r.client.BatchV1().CronJobs(r.getNamespace()).Delete(
 			ctx,
 			cronJob.Name,
@@ -117,7 +120,10 @@ func (r *KubernetesRepository) StartCronJob(
 			return err
 		}
 	}
+	t := false
+	cronJob.Spec.Suspend = &t
 
+	r.logger.Info("updating cronjob")
 	_, err = r.client.BatchV1().CronJobs(r.getNamespace()).Update(
 		ctx,
 		cronJob,
