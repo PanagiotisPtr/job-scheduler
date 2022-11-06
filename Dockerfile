@@ -11,4 +11,6 @@ RUN go mod download
 
 RUN go build -o job-scheduler cmd/job-scheduler/main.go
 
+RUN chmod +x job-scheduler
+
 CMD ["./job-scheduler"]
