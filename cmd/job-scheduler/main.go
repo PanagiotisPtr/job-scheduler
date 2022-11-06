@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/google/go-github/v48/github"
 	"github.com/gorilla/mux"
@@ -13,6 +14,7 @@ import (
 	"github.com/panagiotisptr/job-scheduler/parser"
 	githubRepo "github.com/panagiotisptr/job-scheduler/repository/github"
 	kubeRepo "github.com/panagiotisptr/job-scheduler/repository/kubernetes"
+	"github.com/panagiotisptr/job-scheduler/repository/memory"
 	"github.com/panagiotisptr/job-scheduler/service"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -76,16 +78,28 @@ func Bootstrap(
 }
 
 func main() {
+	isDev := os.Getenv("DEV_MODE")
+
+	var kubeRepoProvider interface{}
+	var configProvider interface{}
+	if isDev == "true" {
+		kubeRepoProvider = memory.ProvideKubernetesMemoryRepository
+		configProvider = config.ProvideConfig
+	} else {
+		kubeRepoProvider = kubeRepo.ProvideKubernetesRepository
+		configProvider = config.ProvideRemoteConfig
+	}
+
 	app := fx.New(
 		fx.Provide(
 			ProvideLogger,
 			ProvideGitHubClient,
 			ProvideKuberentesClientset,
 			ProvideMuxRouter,
-			config.ProvideRemoteConfig,
+			configProvider,
 			parser.ProvideCronJobParser,
 			githubRepo.ProvideGitHubCronJobRepository,
-			kubeRepo.ProvideKubernetesRepository,
+			kubeRepoProvider,
 			service.ProvideCronJobService,
 			service.ProvideKubernetesService,
 			app.ProvideApp,
