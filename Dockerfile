@@ -9,8 +9,6 @@ WORKDIR $GOPATH/github.com/panagiotisptr/job-scheduler
 
 RUN go mod download
 
-RUN go build -o job-scheduler cmd/job-scheduler/main.go
+RUN cd cmd/job-scheduler && go install
 
-RUN chmod +x job-scheduler
-
-CMD ["./job-scheduler"]
+CMD ["job-scheduler"]
