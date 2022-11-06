@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -89,12 +88,7 @@ func ProvideConfig(
 		configFilename = os.Getenv("CONFIG")
 	}
 
-	cfg, err := loadConfig(configFilename)
-
-	b, _ := json.Marshal(cfg)
-	logger.Sugar().Info("Running with configuration: " + string(b))
-
-	return cfg, err
+	return loadConfig(configFilename)
 }
 
 func ProvideTestConfig() (*Config, error) {
