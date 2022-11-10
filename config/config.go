@@ -46,6 +46,10 @@ func loadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 
+	if config.GitHubConfig.AccessToken == "" {
+		config.GitHubConfig.AccessToken = os.Getenv("GH_TOKEN")
+	}
+
 	return &config, nil
 }
 
