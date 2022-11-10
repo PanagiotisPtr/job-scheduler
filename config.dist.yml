@@ -7,3 +7,4 @@ githubConfig:
     - owner: "repo_owner"
       name: "repo_name"
       path: "dir_path"
+      branch: "branch"

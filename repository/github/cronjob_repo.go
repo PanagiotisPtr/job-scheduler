@@ -18,7 +18,7 @@ import (
 
 const (
 	syncTime         = time.Minute * 5
-	timeoutThreshold = time.Minute * 2
+	timeoutThreshold = time.Minute * 5
 )
 
 func isYaml(path string) bool {
@@ -108,13 +108,16 @@ func (r *GitHubCronJobRepository) sync(
 					location.Owner,
 					location.Name,
 					p,
-					nil,
+					&github.RepositoryContentGetOptions{
+						Ref: location.Branch,
+					},
 				)
 				if err != nil {
 					r.logger.With(
 						zap.String("owner", location.Owner),
 						zap.String("name", location.Name),
 						zap.String("path", p),
+						zap.String("branch", location.Branch),
 					).Sugar().Error(
 						"failed to get repository contents: ",
 						err,
@@ -135,9 +138,10 @@ func (r *GitHubCronJobRepository) sync(
 						reader, err := r.getFileReader(
 							ctx,
 							config.GitHubRepositoryArgs{
-								Owner: location.Owner,
-								Name:  location.Name,
-								Path:  c.GetPath(),
+								Owner:  location.Owner,
+								Name:   location.Name,
+								Path:   c.GetPath(),
+								Branch: location.Branch,
 							},
 						)
 						if err != nil {
@@ -145,6 +149,7 @@ func (r *GitHubCronJobRepository) sync(
 								zap.String("owner", location.Owner),
 								zap.String("name", location.Name),
 								zap.String("path", p),
+								zap.String("branch", location.Branch),
 							).Sugar().Error(
 								"failed to get reader for file: ",
 								err,
@@ -158,9 +163,10 @@ func (r *GitHubCronJobRepository) sync(
 						for _, cj := range cronJobs {
 							// one yaml file could have multiple cron jobs
 							r.cronJobs[cj.Name] = config.GitHubRepositoryArgs{
-								Owner: location.Owner,
-								Name:  location.Name,
-								Path:  c.GetPath(),
+								Owner:  location.Owner,
+								Name:   location.Name,
+								Path:   c.GetPath(),
+								Branch: location.Branch,
 							}
 						}
 					}
@@ -188,7 +194,9 @@ func (r *GitHubCronJobRepository) getFileReader(
 		location.Owner,
 		location.Name,
 		location.Path,
-		nil,
+		&github.RepositoryContentGetOptions{
+			Ref: location.Branch,
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -226,6 +234,7 @@ func (r *GitHubCronJobRepository) GetCronJob(
 			zap.String("owner", location.Owner),
 			zap.String("name", location.Name),
 			zap.String("path", location.Path),
+			zap.String("branch", location.Branch),
 		).Sugar().Error(
 			"failed to get reader for file: ",
 			err,

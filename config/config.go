@@ -16,9 +16,10 @@ type ServiceConfig struct {
 }
 
 type GitHubRepositoryArgs struct {
-	Owner string `mapstructure:"owner"`
-	Name  string `mapstructure:"name"`
-	Path  string `mapstructure:"path"`
+	Owner  string `mapstructure:"owner"`
+	Name   string `mapstructure:"name"`
+	Path   string `mapstructure:"path"`
+	Branch string `mapstructure:"branch"`
 }
 
 type GitHubConfig struct {
